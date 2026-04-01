@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r api/requirements.txt
+
+      - name: Lint with ruff
+        run: |
+          pip install ruff
+          ruff check api/ bot/
+
+      - name: Run tests
+        run: pytest
+        env:
+          BATTLEMETRICS_API_KEY: test
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: hence
+          POSTGRES_USER: hence
+          POSTGRES_PASSWORD: changeme
+          SECRET_KEY: test
+          DISCORD_TOKEN: test
+          DISCORD_GUILD_ID: "123456789"
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Docker Compose builds
+        run: docker compose build
