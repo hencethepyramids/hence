@@ -5,7 +5,9 @@ import discord
 from discord.ext import commands
 
 from bot.api_client import HenceAPI
-from bot.commands.online import OnlineCog
+from bot.commands.add import AddCog
+from bot.commands.history import HistoryCog
+from bot.commands.report import ReportCog
 from bot.commands.search import SearchCog
 from bot.commands.whois import WhoisCog
 from bot.config import settings
@@ -27,7 +29,9 @@ class HenceBot(commands.Bot):
     async def setup_hook(self) -> None:
         await self.add_cog(ReadyCog(self))
         await self.add_cog(WhoisCog(self, self.api))
-        await self.add_cog(OnlineCog(self, self.api))
+        await self.add_cog(AddCog(self, self.api))
+        await self.add_cog(ReportCog(self, self.api))
+        await self.add_cog(HistoryCog(self, self.api))
         await self.add_cog(SearchCog(self, self.api))
 
         guild = discord.Object(id=settings.discord_guild_id)

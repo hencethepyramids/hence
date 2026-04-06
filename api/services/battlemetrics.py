@@ -116,11 +116,20 @@ class BattleMetricsClient:
         return players
 
     async def get_server_info(self, battlemetrics_server_id: str) -> dict | None:
-        """Return basic server info (name, player count) from BattleMetrics."""
+        """Return server info including IP and query port from BattleMetrics.
+
+        Returns a dict with keys: name, ip, port, portQuery (Steam A2S query port).
+        """
         try:
             resp = await self._client.get(f"/servers/{battlemetrics_server_id}")
             resp.raise_for_status()
-            return resp.json().get("data", {}).get("attributes")
+            attrs = resp.json().get("data", {}).get("attributes", {})
+            return {
+                "name": attrs.get("name"),
+                "ip": attrs.get("ip"),
+                "port": attrs.get("port"),
+                "portQuery": attrs.get("portQuery"),
+            }
         except httpx.HTTPError as exc:
             logger.error("Failed to fetch server info for %s: %s", battlemetrics_server_id, exc)
             return None

@@ -4,6 +4,24 @@ from discord.ext import commands
 
 from bot.api_client import HenceAPI
 
+STATUS_LABELS = {
+    2: "Tribemember",
+    1: "Friendly",
+    0: "Unknown",
+    -1: "Enemy",
+    -2: "Enemy (@here)",
+    -3: "Enemy (@everyone)",
+}
+
+STATUS_COLORS = {
+    2: discord.Color.blue(),
+    1: discord.Color.green(),
+    0: discord.Color.light_grey(),
+    -1: discord.Color.red(),
+    -2: discord.Color.red(),
+    -3: discord.Color.red(),
+}
+
 
 class WhoisCog(commands.Cog):
     def __init__(self, bot: commands.Bot, api: HenceAPI) -> None:
@@ -20,29 +38,32 @@ class WhoisCog(commands.Cog):
             await interaction.followup.send(f"No player found with EOS ID `{eos_id}`.")
             return
 
+        status = player.get("status", 0)
+        status_label = STATUS_LABELS.get(status, str(status))
         aliases = player.get("aliases", [])
         current_name = aliases[-1]["name"] if aliases else "Unknown"
 
         embed = discord.Embed(
             title=f"Player: {current_name}",
-            color=discord.Color.blurple(),
+            color=STATUS_COLORS.get(status, discord.Color.light_grey()),
         )
         embed.add_field(name="EOS ID", value=f"`{player['eos_id']}`", inline=False)
+        embed.add_field(name="Status", value=status_label, inline=True)
+        if player.get("tribe"):
+            embed.add_field(name="Tribe", value=player["tribe"], inline=True)
         embed.add_field(name="Steam ID", value=player.get("steam_id") or "—", inline=True)
-        embed.add_field(name="Total Sessions", value=str(player["total_sessions"]), inline=True)
         embed.add_field(name="First Seen", value=player["first_seen"][:10], inline=True)
         embed.add_field(name="Last Seen", value=player["last_seen"][:10], inline=True)
 
         if aliases:
             names = [a["name"] for a in aliases]
-            # Show most recent 10 names
             display = "\n".join(f"• {n}" for n in names[-10:])
             if len(names) > 10:
                 display = f"*(showing last 10 of {len(names)})*\n" + display
             embed.add_field(name="Known Names", value=display, inline=False)
 
         if player.get("notes"):
-            embed.add_field(name="Admin Notes", value=player["notes"], inline=False)
+            embed.add_field(name="Notes", value=player["notes"], inline=False)
 
         await interaction.followup.send(embed=embed)
 

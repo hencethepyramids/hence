@@ -10,6 +10,8 @@ class ServerOut(BaseModel):
     name: str
     type: ServerType
     battlemetrics_id: str | None
+    query_host: str | None
+    query_port: int | None
     rcon_host: str | None
     rcon_port: int | None
     active: bool
@@ -21,5 +23,7 @@ class ServerCreate(BaseModel):
     name: str
     type: ServerType
     battlemetrics_id: str | None = None
+    query_host: str | None = None
+    query_port: int | None = None
     rcon_host: str | None = None
     rcon_port: int | None = None
