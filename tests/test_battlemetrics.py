@@ -9,6 +9,8 @@ import respx
 
 from api.services.battlemetrics import BattleMetricsClient, BMPlayer
 
+_BM_PLAYERS_URL = "https://api.battlemetrics.com/players"
+
 
 def _make_player_response(players: list[dict], included: list[dict] | None = None) -> dict:
     """Helper to build a minimal BattleMetrics JSON:API response."""
@@ -48,8 +50,8 @@ async def test_get_online_players_with_eos_id(bm_server_id):
         ],
     )
 
-    with respx.mock(base_url="https://api.battlemetrics.com") as mock:
-        mock.get("/players").mock(return_value=httpx.Response(200, json=response_body))
+    with respx.mock() as mock:
+        mock.get(_BM_PLAYERS_URL).mock(return_value=httpx.Response(200, json=response_body))
         client = BattleMetricsClient(api_key="test-key")
         players = await client.get_online_players(bm_server_id)
         await client.aclose()
@@ -69,8 +71,8 @@ async def test_get_online_players_no_eos_id_fallback(bm_server_id):
         players=[_player_data("bm99", "Anonymous", [])],
     )
 
-    with respx.mock(base_url="https://api.battlemetrics.com") as mock:
-        mock.get("/players").mock(return_value=httpx.Response(200, json=response_body))
+    with respx.mock() as mock:
+        mock.get(_BM_PLAYERS_URL).mock(return_value=httpx.Response(200, json=response_body))
         client = BattleMetricsClient(api_key="test-key")
         players = await client.get_online_players(bm_server_id)
         await client.aclose()
@@ -95,8 +97,8 @@ async def test_get_online_players_multiple(bm_server_id):
         ],
     )
 
-    with respx.mock(base_url="https://api.battlemetrics.com") as mock:
-        mock.get("/players").mock(return_value=httpx.Response(200, json=response_body))
+    with respx.mock() as mock:
+        mock.get(_BM_PLAYERS_URL).mock(return_value=httpx.Response(200, json=response_body))
         client = BattleMetricsClient(api_key="test-key")
         players = await client.get_online_players(bm_server_id)
         await client.aclose()
@@ -113,8 +115,8 @@ async def test_get_online_players_multiple(bm_server_id):
 @pytest.mark.asyncio
 async def test_get_online_players_http_error(bm_server_id):
     """HTTP errors are caught and return an empty list."""
-    with respx.mock(base_url="https://api.battlemetrics.com") as mock:
-        mock.get("/players").mock(return_value=httpx.Response(429))
+    with respx.mock() as mock:
+        mock.get(_BM_PLAYERS_URL).mock(return_value=httpx.Response(429))
         client = BattleMetricsClient(api_key="test-key")
         players = await client.get_online_players(bm_server_id)
         await client.aclose()
@@ -126,8 +128,8 @@ async def test_get_online_players_http_error(bm_server_id):
 async def test_get_online_players_empty_server(bm_server_id):
     response_body = _make_player_response(players=[])
 
-    with respx.mock(base_url="https://api.battlemetrics.com") as mock:
-        mock.get("/players").mock(return_value=httpx.Response(200, json=response_body))
+    with respx.mock() as mock:
+        mock.get(_BM_PLAYERS_URL).mock(return_value=httpx.Response(200, json=response_body))
         client = BattleMetricsClient(api_key="test-key")
         players = await client.get_online_players(bm_server_id)
         await client.aclose()
