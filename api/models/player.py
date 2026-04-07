@@ -12,6 +12,7 @@ from api.models.base import Base
 if TYPE_CHECKING:
     from api.models.alias import Alias
     from api.models.session import PlayerSession
+    from api.models.sighting import Sighting
 
 
 class Player(Base):
@@ -20,6 +21,9 @@ class Player(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     eos_id: Mapped[str] = mapped_column(String(128), unique=True, index=True, nullable=False)
     steam_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    # Status: 2=tribemember, 1=friendly, 0=unknown, -1=enemy, -2=enemy(@here), -3=enemy(@everyone)
+    status: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    tribe: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     total_sessions: Mapped[int] = mapped_column(Integer, default=0)
@@ -27,3 +31,4 @@ class Player(Base):
 
     aliases: Mapped[list["Alias"]] = relationship("Alias", back_populates="player", lazy="selectin")
     sessions: Mapped[list["PlayerSession"]] = relationship("PlayerSession", back_populates="player", lazy="select")
+    sightings: Mapped[list["Sighting"]] = relationship("Sighting", back_populates="player", lazy="select")

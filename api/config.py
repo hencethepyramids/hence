@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     api_port: int = 8000
     secret_key: str = "changeme"
 
+    # Discord alerts
+    alerts_channel_name: str = "ark-alerts"
+
     @property
     def database_url(self) -> str:
         return (

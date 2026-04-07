@@ -24,6 +24,8 @@ class Server(Base):
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     type: Mapped[ServerType] = mapped_column(Enum(ServerType, name="servertype"), nullable=False)
     battlemetrics_id: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    query_host: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    query_port: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rcon_host: Mapped[str | None] = mapped_column(String(256), nullable=True)
     rcon_port: Mapped[int | None] = mapped_column(Integer, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)

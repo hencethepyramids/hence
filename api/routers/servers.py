@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,7 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.db import get_db
 from api.models.server import Server
 from api.schemas.server import ServerCreate, ServerOut
+from api.services.battlemetrics import BattleMetricsClient
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -19,7 +22,27 @@ async def list_servers(db: AsyncSession = Depends(get_db)):
 
 @router.post("/", response_model=ServerOut, status_code=201)
 async def add_server(payload: ServerCreate, db: AsyncSession = Depends(get_db)):
-    server = Server(**payload.model_dump())
+    data = payload.model_dump()
+
+    # Auto-populate query_host and query_port from BattleMetrics if not provided
+    if payload.battlemetrics_id and (not payload.query_host or not payload.query_port):
+        client = BattleMetricsClient()
+        try:
+            info = await client.get_server_info(payload.battlemetrics_id)
+            if info:
+                if not data["query_host"]:
+                    data["query_host"] = info.get("ip")
+                if not data["query_port"]:
+                    data["query_port"] = info.get("portQuery") or info.get("port")
+                if not data["name"] or data["name"] == payload.name:
+                    # Keep user-provided name, but log the BM name for reference
+                    logger.info("BattleMetrics server name: %s", info.get("name"))
+        except Exception:
+            logger.exception("Failed to fetch server info from BattleMetrics for %s", payload.battlemetrics_id)
+        finally:
+            await client.aclose()
+
+    server = Server(**data)
     db.add(server)
     await db.commit()
     await db.refresh(server)

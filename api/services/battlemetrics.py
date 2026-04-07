@@ -33,19 +33,29 @@ class BMPlayer:
 
 
 class BattleMetricsClient:
-    def __init__(self, api_key: str | None = None) -> None:
+    def __init__(
+        self,
+        api_key: str | None = None,
+        client: httpx.AsyncClient | None = None,
+    ) -> None:
         self._api_key = api_key or settings.battlemetrics_api_key
-        headers = {"Accept": "application/json"}
-        if self._api_key:
-            headers["Authorization"] = f"Bearer {self._api_key}"
-        self._client = httpx.AsyncClient(
-            base_url=_BASE_URL,
-            headers=headers,
-            timeout=15.0,
-        )
+        if client is not None:
+            self._client = client
+            self._owns_client = False
+        else:
+            headers = {"Accept": "application/json"}
+            if self._api_key:
+                headers["Authorization"] = f"Bearer {self._api_key}"
+            self._client = httpx.AsyncClient(
+                base_url=_BASE_URL,
+                headers=headers,
+                timeout=15.0,
+            )
+            self._owns_client = True
 
     async def aclose(self) -> None:
-        await self._client.aclose()
+        if self._owns_client:
+            await self._client.aclose()
 
     async def get_online_players(self, battlemetrics_server_id: str) -> list[BMPlayer]:
         """Return players currently online on the given BM server."""
@@ -116,11 +126,20 @@ class BattleMetricsClient:
         return players
 
     async def get_server_info(self, battlemetrics_server_id: str) -> dict | None:
-        """Return basic server info (name, player count) from BattleMetrics."""
+        """Return server info including IP and query port from BattleMetrics.
+
+        Returns a dict with keys: name, ip, port, portQuery (Steam A2S query port).
+        """
         try:
             resp = await self._client.get(f"/servers/{battlemetrics_server_id}")
             resp.raise_for_status()
-            return resp.json().get("data", {}).get("attributes")
+            attrs = resp.json().get("data", {}).get("attributes", {})
+            return {
+                "name": attrs.get("name"),
+                "ip": attrs.get("ip"),
+                "port": attrs.get("port"),
+                "portQuery": attrs.get("portQuery"),
+            }
         except httpx.HTTPError as exc:
             logger.error("Failed to fetch server info for %s: %s", battlemetrics_server_id, exc)
             return None

@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     discord_token: str
     discord_guild_id: int
     api_base_url: str = "http://localhost:8000"
+    alerts_channel_name: str = "ark-alerts"
 
 
 settings = Settings()
