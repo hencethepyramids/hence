@@ -33,19 +33,29 @@ class BMPlayer:
 
 
 class BattleMetricsClient:
-    def __init__(self, api_key: str | None = None) -> None:
+    def __init__(
+        self,
+        api_key: str | None = None,
+        client: httpx.AsyncClient | None = None,
+    ) -> None:
         self._api_key = api_key or settings.battlemetrics_api_key
-        headers = {"Accept": "application/json"}
-        if self._api_key:
-            headers["Authorization"] = f"Bearer {self._api_key}"
-        self._client = httpx.AsyncClient(
-            base_url=_BASE_URL,
-            headers=headers,
-            timeout=15.0,
-        )
+        if client is not None:
+            self._client = client
+            self._owns_client = False
+        else:
+            headers = {"Accept": "application/json"}
+            if self._api_key:
+                headers["Authorization"] = f"Bearer {self._api_key}"
+            self._client = httpx.AsyncClient(
+                base_url=_BASE_URL,
+                headers=headers,
+                timeout=15.0,
+            )
+            self._owns_client = True
 
     async def aclose(self) -> None:
-        await self._client.aclose()
+        if self._owns_client:
+            await self._client.aclose()
 
     async def get_online_players(self, battlemetrics_server_id: str) -> list[BMPlayer]:
         """Return players currently online on the given BM server."""

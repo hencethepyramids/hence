@@ -1,6 +1,7 @@
 """Unit tests for the BattleMetrics API client.
 
-Uses respx to mock HTTP responses — no real network calls.
+Uses respx as an httpx transport (not global mock) to avoid patching issues
+with httpx 0.28 + respx 0.21.
 """
 
 import httpx
@@ -9,7 +10,7 @@ import respx
 
 from api.services.battlemetrics import BattleMetricsClient, BMPlayer
 
-_BM_PLAYERS_URL = "https://api.battlemetrics.com/players"
+_BASE_URL = "https://api.battlemetrics.com"
 
 
 def _make_player_response(players: list[dict], included: list[dict] | None = None) -> dict:
@@ -40,6 +41,16 @@ def _identifier(iid: str, ident_type: str, value: str) -> dict:
     }
 
 
+def _make_client(router: respx.MockRouter) -> BattleMetricsClient:
+    """Build a BattleMetricsClient backed by a respx MockRouter transport."""
+    http_client = httpx.AsyncClient(
+        base_url=_BASE_URL,
+        headers={"Accept": "application/json", "Authorization": "Bearer test-key"},
+        transport=router,
+    )
+    return BattleMetricsClient(client=http_client)
+
+
 @pytest.mark.asyncio
 async def test_get_online_players_with_eos_id(bm_server_id):
     response_body = _make_player_response(
@@ -50,11 +61,12 @@ async def test_get_online_players_with_eos_id(bm_server_id):
         ],
     )
 
-    with respx.mock() as mock:
-        mock.get(_BM_PLAYERS_URL).mock(return_value=httpx.Response(200, json=response_body))
-        client = BattleMetricsClient(api_key="test-key")
-        players = await client.get_online_players(bm_server_id)
-        await client.aclose()
+    router = respx.MockRouter(assert_all_mocked=True)
+    router.get("/players").mock(return_value=httpx.Response(200, json=response_body))
+
+    client = _make_client(router)
+    players = await client.get_online_players(bm_server_id)
+    await client.aclose()
 
     assert len(players) == 1
     p = players[0]
@@ -71,11 +83,12 @@ async def test_get_online_players_no_eos_id_fallback(bm_server_id):
         players=[_player_data("bm99", "Anonymous", [])],
     )
 
-    with respx.mock() as mock:
-        mock.get(_BM_PLAYERS_URL).mock(return_value=httpx.Response(200, json=response_body))
-        client = BattleMetricsClient(api_key="test-key")
-        players = await client.get_online_players(bm_server_id)
-        await client.aclose()
+    router = respx.MockRouter(assert_all_mocked=True)
+    router.get("/players").mock(return_value=httpx.Response(200, json=response_body))
+
+    client = _make_client(router)
+    players = await client.get_online_players(bm_server_id)
+    await client.aclose()
 
     assert len(players) == 1
     assert players[0].eos_id == "bm:bm99"
@@ -97,17 +110,17 @@ async def test_get_online_players_multiple(bm_server_id):
         ],
     )
 
-    with respx.mock() as mock:
-        mock.get(_BM_PLAYERS_URL).mock(return_value=httpx.Response(200, json=response_body))
-        client = BattleMetricsClient(api_key="test-key")
-        players = await client.get_online_players(bm_server_id)
-        await client.aclose()
+    router = respx.MockRouter(assert_all_mocked=True)
+    router.get("/players").mock(return_value=httpx.Response(200, json=response_body))
+
+    client = _make_client(router)
+    players = await client.get_online_players(bm_server_id)
+    await client.aclose()
 
     assert len(players) == 3
     eos_ids = {p.eos_id for p in players}
     assert eos_ids == {"eos-aaa", "eos-bbb", "eos-ccc"}
 
-    # Verify the anonymous "123" player is tracked by EOS ID
     anon = next(p for p in players if p.name == "123")
     assert anon.eos_id == "eos-bbb"
 
@@ -115,11 +128,12 @@ async def test_get_online_players_multiple(bm_server_id):
 @pytest.mark.asyncio
 async def test_get_online_players_http_error(bm_server_id):
     """HTTP errors are caught and return an empty list."""
-    with respx.mock() as mock:
-        mock.get(_BM_PLAYERS_URL).mock(return_value=httpx.Response(429))
-        client = BattleMetricsClient(api_key="test-key")
-        players = await client.get_online_players(bm_server_id)
-        await client.aclose()
+    router = respx.MockRouter(assert_all_mocked=True)
+    router.get("/players").mock(return_value=httpx.Response(429))
+
+    client = _make_client(router)
+    players = await client.get_online_players(bm_server_id)
+    await client.aclose()
 
     assert players == []
 
@@ -128,10 +142,11 @@ async def test_get_online_players_http_error(bm_server_id):
 async def test_get_online_players_empty_server(bm_server_id):
     response_body = _make_player_response(players=[])
 
-    with respx.mock() as mock:
-        mock.get(_BM_PLAYERS_URL).mock(return_value=httpx.Response(200, json=response_body))
-        client = BattleMetricsClient(api_key="test-key")
-        players = await client.get_online_players(bm_server_id)
-        await client.aclose()
+    router = respx.MockRouter(assert_all_mocked=True)
+    router.get("/players").mock(return_value=httpx.Response(200, json=response_body))
+
+    client = _make_client(router)
+    players = await client.get_online_players(bm_server_id)
+    await client.aclose()
 
     assert players == []
